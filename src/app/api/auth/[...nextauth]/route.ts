@@ -1,13 +1,15 @@
 import NextAuth from "next-auth";
+
 import CredentialsProvider from "next-auth/providers/credentials";
+
 import bcrypt from "bcryptjs";
 
 import { connectDB } from "@/lib/db";
+
 import User from "@/models/User";
 
 const handler = NextAuth({
   providers: [
-    
     CredentialsProvider({
       name: "credentials",
 
@@ -15,10 +17,6 @@ const handler = NextAuth({
         email: {},
         password: {},
       },
-      session: {
-  strategy: "jwt",
-},
-      
 
       async authorize(credentials) {
         await connectDB();
@@ -31,10 +29,11 @@ const handler = NextAuth({
           throw new Error("User not found");
         }
 
-        const isPasswordCorrect = await bcrypt.compare(
-          credentials!.password,
-          user.password
-        );
+        const isPasswordCorrect =
+          await bcrypt.compare(
+            credentials!.password,
+            user.password
+          );
 
         if (!isPasswordCorrect) {
           throw new Error("Invalid password");
@@ -42,8 +41,8 @@ const handler = NextAuth({
 
         return {
           id: user._id.toString(),
-          email: user.email,
           name: user.username,
+          email: user.email,
         };
       },
     }),
@@ -53,29 +52,30 @@ const handler = NextAuth({
     strategy: "jwt",
   },
 
-  secret: process.env.NEXTAUTH_SECRET,
-
   pages: {
     signIn: "/login",
   },
 
   callbacks: {
-  async jwt({ token, user }) {
-    if (user) {
-      token.id = user.id;
-    }
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
 
-    return token;
+      return token;
+    },
+
+    async session({ session, token }) {
+      if (session.user) {
+        (session.user as any).id =
+          token.id;
+      }
+
+      return session;
+    },
   },
 
-  async session({ session, token }) {
-    if (session.user) {
-      (session.user as any).id = token.id;
-    }
-
-    return session;
-  },
-},
+  secret: process.env.NEXTAUTH_SECRET,
 });
 
 export { handler as GET, handler as POST };
